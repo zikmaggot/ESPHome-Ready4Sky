@@ -575,12 +575,13 @@ void R4SDriver::gattc_event_handler( esp_gattc_cb_event_t event, esp_gatt_if_t e
         if (now.is_valid()) {
           this->notify_data_time = now.timestamp;
           if(this->tz_offset == 0) {
-#ifdef USE_ARDUINO
-            this->tz_offset = ESPTime::timezone_offset();
-#endif
-#ifdef USE_ESP_IDF
-            this->tz_offset = - ESPTime::timezone_offset();
-#endif
+            auto utc = global_r4s_engine->get_time()->utcnow();
+            int32_t diff = (now.hour - utc.hour) * 3600 + (now.minute - utc.minute) * 60;
+            if (now.day_of_week != utc.day_of_week) {
+              if (now.day_of_week == (utc.day_of_week % 7) + 1) diff += 86400;
+              else diff -= 86400;
+            }
+            this->tz_offset = diff;
           }
         }
         memcpy(this->notify_data, param->notify.value, param->notify.value_len);
@@ -640,6 +641,7 @@ std::string R4SDriver::uuid_to_string(esp_bt_uuid_t ud) {
 }  // namespace esphome
 
 #endif
+
 
 
 
